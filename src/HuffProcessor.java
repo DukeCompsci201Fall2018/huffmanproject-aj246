@@ -53,7 +53,6 @@ public class HuffProcessor {
 		in.reset();
 		writeCompressedBits(codings, in, out);
 		out.close();
-		
 	}
 	
 
@@ -62,11 +61,11 @@ public class HuffProcessor {
 		while (true) {
 			int word = in.readBits(BITS_PER_WORD);
 			if (word == -1) break;
-			out.writeBits((codings[word]).length(), Integer.parseInt(codings[word], 2));
+			String code = codings[word];
+			out.writeBits(code.length(), Integer.parseInt(code, 2));
 		}
 		String last = codings[PSEUDO_EOF];
 		out.writeBits(last.length(), Integer.parseInt(last, 2));
-		
 	}
 
 	private void writeHeader(HuffNode root, BitOutputStream out) {
@@ -87,14 +86,17 @@ public class HuffProcessor {
 		// TODO Auto-generated method stub
 		if (root.myLeft == null && root.myRight == null) {
 			codings[root.myValue] = path;
+			if (myDebugLevel >= DEBUG_HIGH) {
+				System.out.printf("encoding for %d is %s\n", root.myValue,path);
+			}
 			return;
 		}
-		makeCodingsFromTree(root.myLeft, path+="0", codings);
-		makeCodingsFromTree(root.myRight, path+="1", codings);
+		makeCodingsFromTree(root.myLeft, path+"0", codings);
+		makeCodingsFromTree(root.myRight, path+"1", codings);
 		
 	}
 
-	public int[] readForCounts(BitInputStream in) {
+	private int[] readForCounts(BitInputStream in) {
 		int[] counts = new int[ALPH_SIZE + 1];
 		while(true){
 			int character = in.readBits(BITS_PER_WORD);
@@ -107,13 +109,20 @@ public class HuffProcessor {
 		return counts;
 	}
 	
-	public HuffNode makeTreeFromCounts(int[] counts) {
+	private HuffNode makeTreeFromCounts(int[] counts) {
 		PriorityQueue<HuffNode> pq = new PriorityQueue<>();
 		
 		for(int i = 0; i < ALPH_SIZE + 1 ; i++) {
+			if (myDebugLevel >= DEBUG_HIGH && counts[i] > 0) {
+				System.out.printf("%d %d \n",i, counts[i]);
+			}
+			
 			if (counts[i] > 0) {
 				 pq.add(new HuffNode(i,counts[i],null,null));
 			}
+		}
+		if (myDebugLevel >= DEBUG_HIGH) {
+			System.out.printf("pq created with %d nodes\n", pq.size());
 		}
 
 		while (pq.size() > 1) {
@@ -181,7 +190,7 @@ public class HuffProcessor {
 		   }
 	}
 
-	public HuffNode readTreeHeader(BitInputStream in) {
+	private HuffNode readTreeHeader(BitInputStream in) {
 		int bit = in.readBits(1);
 		if (bit == -1) throw new HuffException("Read bit of -1");
 		if (bit == 0) {
